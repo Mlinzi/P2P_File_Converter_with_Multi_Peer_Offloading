@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>P2P Convert</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="logo">⬡ P2P Convert</div>
+    <div class="header-right">
+      <span id="peer-name-label">{{ peer_name }}</span>
+      <span id="tls-badge" title="TLS encrypted" style="display:none;font-size:.85rem;background:#22c55e;color:#fff;padding:1px 7px;border-radius:10px;margin-left:6px">🔒 TLS</span>
+      <div class="peer-dots" id="peer-dots">
+        <span class="dot self" title="This PC"></span>
+      </div>
+      <span id="peer-count-label">1 peer</span>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('convert', this)">Convert</button>
+    <button class="tab" onclick="switchTab('stats', this)">Network Stats</button>
+  </div>
+
+  <!-- ===== Convert Tab ===== -->
+  <div id="tab-convert" class="tab-content">
+
+    <!-- Dropdowns -->
+    <div class="dropdowns">
+      <div class="dropdown-box" id="fmt-from">
+        <span id="fmt-from-label">Auto Detect</span>
+      </div>
+      <div class="arrow">→</div>
+      <div class="dropdown-box">
+        <select id="fmt-to" onchange="onFormatChange()">
+          <option value="">Select format...</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Drop zone -->
+    <div class="dropzone" id="dropzone"
+         onclick="document.getElementById('file-input').click()"
+         ondragover="event.preventDefault(); this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="onDrop(event)">
+      <div class="dropzone-icon">📂</div>
+      <div class="dropzone-text">Drop file here or <u>click to browse</u></div>
+      <div class="dropzone-hint" id="drop-hint">Supports documents, images, audio, video</div>
+      <div class="selected-file" id="selected-file"></div>
+    </div>
+    <input type="file" id="file-input" style="display:none" onchange="onFileSelect(this.files)" multiple>
+
+    <button class="convert-btn" id="convert-btn" onclick="doConvert()" disabled>Convert</button>
+
+    <!-- Jobs list -->
+    <div class="section-label">Recent Jobs</div>
+    <div id="jobs-list">
+      <div class="empty-msg">No jobs yet. Drop a file above to get started.</div>
+    </div>
+
+    <!-- Offload toggle -->
+    <div class="offload-row">
+      <label class="toggle-label">
+        <input type="checkbox" id="prefer-peers-toggle" onchange="togglePreferPeers(this)">
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        Prefer peers <span class="toggle-hint" id="offload-hint">(off — converts locally when idle)</span>
+      </label>
+    </div>
+
+    <!-- Peers -->
+    <div class="section-label">Connected Peers</div>
+    <div id="peers-list">
+      <div class="peer-chip self-chip">● This PC (you)</div>
+    </div>
+
+  </div>
+
+  <!-- ===== Network Stats Tab ===== -->
+  <div id="tab-stats" class="tab-content" style="display:none">
+
+    <!-- TLS toggle -->
+    <div class="offload-row" style="margin-bottom:8px">
+      <label class="toggle-label">
+        <input type="checkbox" id="tls-toggle" onchange="toggleTLS(this)">
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        Enable TLS encryption <span class="toggle-hint" id="tls-hint">(off — plain TCP)</span>
+      </label>
+    </div>
+
+    <!-- GPU toggle -->
+    <div class="offload-row" style="margin-bottom:16px" id="gpu-row" style="display:none">
+      <label class="toggle-label">
+        <input type="checkbox" id="gpu-toggle" onchange="toggleGPU(this)" disabled>
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        GPU acceleration <span class="toggle-hint" id="gpu-hint">(no GPU encoder detected)</span>
+      </label>
+    </div>
+
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card"><div class="stat-label">Jobs Done</div><div class="stat-val" id="s-jobs-done">0</div></div>
+      <div class="stat-card"><div class="stat-label">Jobs Failed</div><div class="stat-val" id="s-jobs-failed">0</div></div>
+      <div class="stat-card"><div class="stat-label">Avg Latency</div><div class="stat-val" id="s-latency">—</div></div>
+      <div class="stat-card"><div class="stat-label">Throughput</div><div class="stat-val" id="s-throughput">—</div></div>
+      <div class="stat-card"><div class="stat-label">CPU Usage</div><div class="stat-val" id="s-cpu">—</div></div>
+      <div class="stat-card"><div class="stat-label">Data Sent</div><div class="stat-val" id="s-sent">—</div></div>
+      <div class="stat-card"><div class="stat-label">Data Received</div><div class="stat-val" id="s-recv">—</div></div>
+      <div class="stat-card"><div class="stat-label">Uptime</div><div class="stat-val" id="s-uptime">—</div></div>
+    </div>
+
+    <div class="section-label" style="margin-top:24px">Latency History (last 20 jobs, ms)</div>
+    <div class="sparkline-wrap">
+      <canvas id="sparkline" height="80"></canvas>
+    </div>
+
+    <div class="section-label" style="margin-top:24px">Activity Log</div>
+    <div class="log-box" id="log-box">
+      <div class="log-empty">No activity yet.</div>
+    </div>
+
+    <div class="section-label" style="margin-top:24px">Parameter Reference</div>
+    <table class="param-table">
+      <thead><tr><th>Parameter</th><th>Description</th><th>Measurement</th></tr></thead>
+      <tbody>
+        <tr><td>Conversion Latency</td><td>Time from file send to converted file received</td><td>Timestamped at socket send/receive</td></tr>
+        <tr><td>Throughput</td><td>Files converted per minute</td><td>Counter over time window</td></tr>
+        <tr><td>CPU Utilization</td><td>Processing resource usage on converting peer</td><td>psutil per peer</td></tr>
+        <tr><td>Bandwidth Usage</td><td>Network bytes per conversion</td><td>Bytes sent/received at socket level</td></tr>
+        <tr><td>Peer Scalability</td><td>Latency/throughput change as peer count increases</td><td>Benchmark with 2, 3, 4 peers</td></tr>
+        <tr><td>Fault Tolerance</td><td>Recovery time on peer failure mid-transfer</td><td>Kill peer, measure retry time</td></tr>
+        <tr><td>File Size vs Latency</td><td>Conversion time vs file size</td><td>Test with 1 MB, 10 MB, 100 MB</td></tr>
+        <tr><td>TLS Overhead</td><td>Extra latency from SSL/TLS vs plain TCP</td><td>Toggle USE_TLS flag, compare</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

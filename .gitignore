@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.eggs/
+*.egg-info/
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# TLS certificates — generated locally, contain private key, never commit
+certs/peer.crt
+certs/peer.key
+*.key
+*.crt
+
+# Runtime directories (generated during use)
+temp/
+results/
+
+# Archives
+*.7z
+*.zip
+*.tar.gz
+
+# Claude Code settings
+.claude/
+
+# VSCode
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

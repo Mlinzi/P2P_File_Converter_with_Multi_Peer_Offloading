@@ -1,0 +1,10 @@
+zeroconf
+psutil
+pillow
+pypdf
+docx2pdf
+cryptography
+imageio-ffmpeg
+comtypes
+python-pptx
+reportlab
